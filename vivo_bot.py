@@ -9,7 +9,7 @@ class VIVOBot(object):
     """ VIVOBot is a simple class to interact with various functionality in
         the vivo siteAdmin console via http requests.
     """
-    def __init__(self, filename="vivobot.cfg", debug=2):
+    def __init__(self, filename="config/vivobot.cfg", debug=2):
 
         self.configfile = filename
         self.set_debug(debug)
@@ -65,7 +65,7 @@ class VIVOBot(object):
         """ Perform SPARQL Query against the VIVO SPARQL console """
         if not prefixes:
             try:
-                with open('prefixes.txt', 'r') as f:
+                with open('config/prefixes.txt', 'r') as f:
                     prefixes = f.read()
             except IOError:
                 logging.warning("Unable to find prefixes file and no prefixes "

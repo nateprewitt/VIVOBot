@@ -66,7 +66,7 @@ def log_result(result, n):
     """ Write response from server to a file """
     if result:
         t = time.strftime("%d-%m-%YT%H.%M.%S")
-        with open(t+"_cmd_"+str(n), "w") as f:
+        with open("logs/"+t+"_cmd_"+str(n), "w") as f:
             f.write(result)
     
 
