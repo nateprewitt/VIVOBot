@@ -9,10 +9,10 @@ You can also use this to perform quick data retrievals out of VIVO for data mash
 would prefer to do in a programming environment.
 
 ##Setup
-    * Install [VIVO](https://github.com/vivo-project/VIVO)
-    * Download [VIVOBot](https://github.com/nateprewitt/VIVOBot)
-    * Create your config file. You can see an example [here](https://github.com/nateprewitt/VIVOBot/blob/master/config/vivobot.cfg.example).
-    * You're ready to start building!
+* Install [VIVO](https://github.com/vivo-project/VIVO)
+* Download [VIVOBot](https://github.com/nateprewitt/VIVOBot)
+* Create your config file. You can see an example [here](https://github.com/nateprewitt/VIVOBot/blob/master/config/vivobot.cfg.example).
+* You're ready to start building!
 
 ##Usage
 
