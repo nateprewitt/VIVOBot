@@ -14,7 +14,7 @@ class VIVOBot(object):
         self.configfile = filename
         self.set_debug(debug)
         vardict = self.ingest_config()
-        self.server = vardict.get('server')
+        self.server = vardict.get('server',"")
         self.cookies = self.login(vardict.get('uname'), vardict.get('pass'))
         
     def ingest_config(self):
@@ -58,7 +58,11 @@ class VIVOBot(object):
         c1 = r1.cookies
         r = requests.post(self.server+"/authenticate", data=data, cookies=c1)
         #!!! Possibly handle HTTP 30x redirects here (http v https issue)
-        return r.cookies
+        if r.status_code == 200:
+            return c1
+        else:
+            print r.status_code
+            raise EnvironmentError("Unable to authenticate user")
 
     def query_triplestore(self, query, prefixes=None):
 
@@ -83,7 +87,8 @@ class VIVOBot(object):
     def rebuild_search_index(self):
 
         """ Trigger a reload of the search index """
-        r = requests.post(self.server+"/SearchIndex")
+        data = {'rebuild': 'Rebuild'}
+        r = requests.post(self.server+"/SearchIndex", data=data, cookies=self.cookies)
         # Possibly try to do a check with status bar until it's done?
 
     def recompute_inference(self):
