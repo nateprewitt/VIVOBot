@@ -11,6 +11,8 @@ class VIVOBot(object):
     the vivo siteAdmin console via http requests.
     """
 
+    TRIPLE_TYPES = ('RDF/XML', 'N3', 'N-TRIPLE', 'TTL')
+
     def __init__(self, filename="config/vivobot.cfg", debug=2):
 
         self.configfile = filename
@@ -53,9 +55,9 @@ class VIVOBot(object):
                 'loginPassword': passw,
                 'loginForm': 'Log in'}
 
-        r1 = requests.get(self.server+"/login")
-        c1 = r1.cookies
-        r = requests.post(self.server+"/authenticate", data=data, cookies=c1)
+        resp = requests.head(self.server+"/login")
+        cookies = resp.cookies
+        r = requests.post(self.server+"/authenticate", data=data, cookies=cookies)
         # !!! Possibly handle HTTP 30x redirects here (http v https issue)
         if r.status_code == 200:
             return c1
@@ -79,8 +81,8 @@ class VIVOBot(object):
                 "resultFormat": "application/sparql-results+json",
                 "rdfResultFormat": "text/turtle"}
 
-        url = "/admin/sparqlquery?"+urllib.urlencode(data)
-        r = requests.get(self.server+url, cookies=self.cookies)
+        url = "/admin/sparqlquery"
+        r = requests.get(self.server+url, params=data, cookies=self.cookies)
         return r.content
 
     def rebuild_search_index(self):
@@ -92,10 +94,12 @@ class VIVOBot(object):
     def recompute_inference(self):
         """Trigger the system to start reinferencing"""
         r = requests.post(self.server+"/RecomputeInferences")
+        if not r.ok:
+            pass # Raise exception?
 
     def upload_file(self, loc, rdftype="file", lang="N3", mode="add", cg=True):
         """Upload an ontology file into VIVO"""
-        if lang not in ('RDF/XML', 'N3', 'N-TRIPLE', 'TTL'):
+        if lang not in TRIPLE_TYPES:
             logging.warning("Unrecognized Language Parameter for "
                             "resource request %s") % loc
         if mode not in ('directAddABox', 'add', 'remove'):
@@ -114,4 +118,5 @@ class VIVOBot(object):
 
         headers = {"Content-Type": "multipart/form-data"}
         r = requests.post(self.server+"/uploadRDF", data=data, headers=headers)
-        # Return status code?
+
+        return r.ok
