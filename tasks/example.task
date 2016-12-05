@@ -1,4 +1,0 @@
-query_triplestore "SELECT ?s WHERE { ?s rdf:type foaf:Person }"
-recompute_inference
-rebuild_search_index
-query_triplestore "SELECT ?s WHERE { ?s rdf:type foaf:Person }"
