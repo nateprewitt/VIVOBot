@@ -2,6 +2,7 @@ import json
 import sys
 import urllib
 import logging
+import os
 
 import requests
 
@@ -13,13 +14,33 @@ class VIVOBot(object):
 
     TRIPLE_TYPES = ('RDF/XML', 'N3', 'N-TRIPLE', 'TTL')
 
-    def __init__(self, filename="config/vivobot.cfg", debug=2):
+    def __init__(self, filename=None, debug=2):
 
         self.configfile = filename
         self.set_debug(debug)
-        vardict = self.ingest_config()
-        self.server = vardict.get('server', "")
-        self.cookies = self.login(vardict.get('uname'), vardict.get('pass'))
+        vardict = self.initialize_env()
+        self.server = vardict.get('server', '')
+        self.user = vardict.get('uname', '')
+        self.password = vardict.get('pass', '')
+        self.cookies = self.login(self.user, self.password)
+
+    def initialize_env(self):
+        """Load parameters from environment variables if available, otherwise
+        attempt to load them from a supplied config file.
+        """
+        if self.configfile is None:
+            var_dict = {'server': os.environ.get('VIVO_SERVER'),
+                        'uname': os.environ.get('VIVO_USER'),
+                        'pass': os.environ.get('VIVO_PASS')}
+
+            if not all([v for k, v in var_dict.items()]):
+                raise ValueError('VIVO environment variables are not set '
+                                 'appropriately, and no config file was '
+                                 'supplied.')
+        else:
+            var_dict = self.ingest_config()
+
+        return var_dict
 
     def ingest_config(self):
         """Opens configuration file and loads contents as JSON"""
@@ -27,14 +48,12 @@ class VIVOBot(object):
             with open(self.configfile, 'rb') as f:
                 return json.loads(f.read())
         except IOError:
-            logging.critical("No config file was found, please ensure path "
-                             "is correct.")
-            sys.exit(1)
+            raise IOError("No config file was found, please ensure path "
+                          "is correct.")
         except ValueError:
-            logging.critical("The config file %s is imporperly configured. "
+            raise ValueError("The config file %s is imporperly configured. "
                              "Please ensure it adheres to "
-                             "the JSON format.") % self.configfile
-            sys.exit(1)
+                             "the JSON format." % self.configfile)
 
     def set_debug(self, debug):
         """Convert numerical debugging level to logging variable"""
