@@ -1,6 +1,4 @@
 import json
-import sys
-import urllib
 import logging
 import os
 
@@ -77,12 +75,11 @@ class VIVOBot(object):
         resp = requests.head(self.server+"/login")
         cookies = resp.cookies
         r = requests.post(self.server+"/authenticate", data=data, cookies=cookies)
-        # !!! Possibly handle HTTP 30x redirects here (http v https issue)
-        if r.status_code == 200:
+        if r.ok:
             return c1
         else:
-            print r.status_code
-            raise EnvironmentError("Unable to authenticate user")
+            raise EnvironmentError("%s received: Unable to authenticate "
+                                   "user" % r.status_code)
 
     def query_triplestore(self, query, prefixes=None):
         """Perform SPARQL Query against the VIVO SPARQL console"""
@@ -94,25 +91,25 @@ class VIVOBot(object):
                 logging.warning("Unable to find prefixes file and no prefixes "
                                 "were provided. Running query without "
                                 "prefixes.")
-                prefixes = ""
+                prefixes = ''
 
-        data = {"query": prefixes+'\n'+query,
-                "resultFormat": "application/sparql-results+json",
-                "rdfResultFormat": "text/turtle"}
+        data = {'query': '\n'.join(prefixes, query),
+                'resultFormat': 'application/sparql-results+json',
+                'rdfResultFormat': 'text/turtle'}
 
-        url = "/admin/sparqlquery"
+        url = '/admin/sparqlquery'
         r = requests.get(self.server+url, params=data, cookies=self.cookies)
         return r.content
 
     def rebuild_search_index(self):
         """Trigger a reload of the search index"""
         data = {'rebuild': 'Rebuild'}
-        r = requests.post(self.server+"/SearchIndex", data=data, cookies=self.cookies)
+        r = requests.post(self.server+'/SearchIndex', data=data, cookies=self.cookies)
         # Possibly try to do a check with status bar until it's done?
 
     def recompute_inference(self):
         """Trigger the system to start reinferencing"""
-        r = requests.post(self.server+"/RecomputeInferences")
+        r = requests.post(self.server+'/RecomputeInferences')
         if not r.ok:
             pass # Raise exception?
 
@@ -124,18 +121,19 @@ class VIVOBot(object):
         if mode not in ('directAddABox', 'add', 'remove'):
             logging.warning("Unrecognized Mode Parameter for "
                             "resource request %s") % loc
-        data = {"mode": mode,
-                "language": lang,
-                "makeClassgroups": cg}
-        if rdftype.lower() == "file":
+        data = {'mode': mode,
+                'language': lang,
+                'makeClassgroups': cg}
+        if rdftype.lower() == 'file':
             data['rdfStream'] = loc
-        elif rdftype.lower() == "url":
+        elif rdftype.lower() == 'url':
             data['rdfUrl'] = loc
         else:
             logging.warning("Unrecognized Location Parameter for "
                             "resource request %s") % loc
 
-        headers = {"Content-Type": "multipart/form-data"}
+        # pretty sure you should be passing this to the `file` param...
+        headers = {'Content-Type': 'multipart/form-data'}
         r = requests.post(self.server+"/uploadRDF", data=data, headers=headers)
 
         return r.ok
