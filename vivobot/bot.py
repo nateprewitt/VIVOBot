@@ -15,35 +15,37 @@ class VIVOBot(object):
     def __init__(self, filename=None, debug=2):
 
         self.configfile = filename
-        self.set_debug(debug)
-        vardict = self.initialize_env()
-        self.server = vardict.get('server', '')
-        self.user = vardict.get('uname', '')
-        self.password = vardict.get('pass', '')
-        self.cookies = self.login(self.user, self.password)
+        self.server = None
+        self.username = None
+        self.password = None
+        self.session = requests.Session()
+        self.initialize_env()
 
     def initialize_env(self):
         """Load parameters from environment variables if available, otherwise
         attempt to load them from a supplied config file.
         """
         if self.configfile is None:
-            var_dict = {'server': os.environ.get('VIVO_SERVER'),
-                        'uname': os.environ.get('VIVO_USER'),
-                        'pass': os.environ.get('VIVO_PASS')}
+            self.server = os.environ.get('VIVO_SERVER')
+            self.username = os.environ.get('VIVO_USER')
+            self.password = os.environ.get('VIVO_PASS')
 
-            if not all([v for k, v in var_dict.items()]):
+            if not all((self.username, self.server, self.password)):
                 raise ValueError('VIVO environment variables are not set '
                                  'appropriately, and no config file was '
                                  'supplied.')
         else:
-            var_dict = self.ingest_config()
+            config = self.ingest_config()
+            self.server = config['server']
+            self.username = config['username']
+            self.password = config['password']
 
-        return var_dict
+        self.login(self.username, self.password)
 
     def ingest_config(self):
         """Opens configuration file and loads contents as JSON"""
         try:
-            with open(self.configfile, 'rb') as f:
+            with open(self.configfile, 'r') as f:
                 return json.loads(f.read())
         except IOError:
             raise IOError("No config file was found, please ensure path "
@@ -66,20 +68,23 @@ class VIVOBot(object):
         else:
             logging.basicConfig(level=logging.DEBUG)
 
-    def login(self, uname, passw):
+    def login(self, username, password):
         """Perform login to VIVO and set cookie for transactions"""
-        data = {'loginName': uname,
-                'loginPassword': passw,
+        data = {'loginName': username,
+                'loginPassword': password,
                 'loginForm': 'Log in'}
 
-        resp = requests.head(self.server+"/login")
-        cookies = resp.cookies
-        r = requests.post(self.server+"/authenticate", data=data, cookies=cookies)
-        if r.ok:
-            return c1
-        else:
-            raise EnvironmentError("%s received: Unable to authenticate "
-                                   "user" % r.status_code)
+        # Get a new JSESSIONID
+        self.session.head(self.server+"/login")
+
+        # Authenticate
+        r = self.session.post(self.server+"/authenticate", data=data)
+
+        if not r.request.url.endswith('siteAdmin'):
+            # We didn't succesfully login but VIVO sends a 200 OK on failure
+            r.status_code = 403
+        if not r.ok:
+            r.raise_for_status()
 
     def query_triplestore(self, query, prefixes=None):
         """Perform SPARQL Query against the VIVO SPARQL console"""
@@ -98,23 +103,33 @@ class VIVOBot(object):
                 'rdfResultFormat': 'text/turtle'}
 
         url = '/admin/sparqlquery'
-        r = requests.get(self.server+url, params=data, cookies=self.cookies)
+        r = self.session.get(self.server+url, params=data)
         return r.content
 
     def rebuild_search_index(self):
         """Trigger a reload of the search index"""
         data = {'rebuild': 'Rebuild'}
-        r = requests.post(self.server+'/SearchIndex', data=data, cookies=self.cookies)
+        r = self.session.post(self.server+'/SearchIndex', data=data)
         # Possibly try to do a check with status bar until it's done?
 
     def recompute_inference(self):
         """Trigger the system to start reinferencing"""
-        r = requests.post(self.server+'/RecomputeInferences')
+        r = self.session.post(self.server+'/RecomputeInferences')
         if not r.ok:
-            pass # Raise exception?
+            r.raise_for_status()
 
     def upload_file(self, loc, rdftype="file", lang="N3", mode="add", cg=True):
-        """Upload an ontology file into VIVO"""
+        """Upload an ontology file into VIVO
+
+        :param str loc: file path to the location of the file to upload.
+        :param str rdftype: type of resource being uploaded, typically
+            a file.
+        :param str lang: the format of the triples in the file to be
+            uploaded.
+        :param str mode: action to be performed with uploaded file.
+        :param str cg: class group to be created around the files
+            contents.
+        """
         if lang not in TRIPLE_TYPES:
             logging.warning("Unrecognized Language Parameter for "
                             "resource request %s") % loc
@@ -134,6 +149,7 @@ class VIVOBot(object):
 
         # pretty sure you should be passing this to the `file` param...
         headers = {'Content-Type': 'multipart/form-data'}
-        r = requests.post(self.server+"/uploadRDF", data=data, headers=headers)
+        r = self.session.post(self.server+"/uploadRDF", data=data, headers=headers)
 
-        return r.ok
+        if not r.ok:
+            r.raise_for_status()
