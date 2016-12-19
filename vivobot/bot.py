@@ -4,6 +4,8 @@ import os
 
 import requests
 
+from .definitions import DEFAULT_PREFIXES
+
 logging.getLogger(__name__)
 
 class VIVOBot(object):
@@ -76,17 +78,15 @@ class VIVOBot(object):
 
     def query_triplestore(self, query, prefixes=None):
         """Perform SPARQL Query against the VIVO SPARQL console"""
-        if not prefixes:
-            try:
-                with open('config/prefixes.txt', 'r') as f:
-                    prefixes = f.read()
-            except IOError:
-                logging.warning("Unable to find prefixes file and no prefixes "
-                                "were provided. Running query without "
-                                "prefixes.")
-                prefixes = ''
+        if prefixes is None:
+            prefixes = DEFAULT_PREFIXES
+        elif not isinstance(prefixes, str) and getattr(prefixes, 'read'):
+            # If a file object is passed for prefixes, we'll attempt to read it.
+            prefixes = prefixes.read()
+        else:
+            prefixes = prefixes
 
-        data = {'query': '\n'.join(prefixes, query),
+        data = {'query': '\n'.join((prefixes, query)),
                 'resultFormat': 'application/sparql-results+json',
                 'rdfResultFormat': 'text/turtle'}
 
