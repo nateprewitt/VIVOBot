@@ -4,6 +4,7 @@ import os
 
 import requests
 
+logging.getLogger(__name__)
 
 class VIVOBot(object):
     """VIVOBot is a simple class to interact with various functionality in
@@ -54,19 +55,6 @@ class VIVOBot(object):
             raise ValueError("The config file %s is imporperly configured. "
                              "Please ensure it adheres to "
                              "the JSON format." % self.configfile)
-
-    def set_debug(self, debug):
-        """Convert numerical debugging level to logging variable"""
-        if debug < 1:
-            logging.basicConfig(level=logging.CRITICAL)
-        elif debug == 1:
-            logging.basicConfig(level=logging.ERROR)
-        elif debug == 2:
-            logging.basicConfig(level=logging.WARNING)
-        elif debug == 3:
-            logging.basicConfig(level=logging.INFO)
-        else:
-            logging.basicConfig(level=logging.DEBUG)
 
     def login(self, username, password):
         """Perform login to VIVO and set cookie for transactions"""
